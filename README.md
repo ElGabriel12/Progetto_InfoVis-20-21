@@ -18,7 +18,7 @@ Interazione con il grafo
 
 Dalla prima simulazione è possibile effettuare una serie di interazioni:
 
-1) È stato implementato un menu a tendina che permette la ricerca di un nodo all’interno del grafo. Infatti,scegliendo un nome presente nell’elenco il nodo corrispondente a quel nome cambierà colore (arancione) aumentanoinoltre il suo raggio. Tale scelta è stata fatta per garantire una migliore rappresentazione, evitando la scrittura di testo direttamente nel grafo.
+1) È stato implementato un menu a tendina che permette la ricerca di un nodo all’interno del grafo. Infatti, scegliendo un nome presente nell’elenco il nodo corrispondente a quel nome cambierà colore (arancione) aumentanoinoltre il suo raggio. Tale scelta è stata fatta per garantire una migliore rappresentazione, evitando la scrittura di testo direttamente nel grafo.
 
 2) Passando con il mouse su un nodo o arco è stata implementata la funzione che permette la visualizzazione di 
 nome, type, id nel caso di nodo, oppure il tipo della sorgente e della destinazione nel caso di arco. Aumenta inoltre, per una migliore visualizzazione lo spessore dell’arco o il raggio del nodo sopra il quale si passa con il mouse.

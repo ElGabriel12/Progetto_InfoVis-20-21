@@ -48,7 +48,7 @@ var svg = d3.select("#GFG")
 
 var color = d3.scaleOrdinal(d3.schemeCategory10);
 
-//simulazione che genera la forza attrattiva e repulsiva
+//dichiarazione dell'algoritmo Force Directed e relativa calibratura delle varie forze per adattarlo al nostro modello
 var simulation = d3.forceSimulation().velocityDecay(0.8)
     .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(50).strength(1))
     .force("charge", d3.forceManyBody().strength(-1000))
@@ -56,7 +56,7 @@ var simulation = d3.forceSimulation().velocityDecay(0.8)
     .force("y", d3.forceY(height / 2).strength(1))
     .force("center", d3.forceCenter(width / 2, height / 2));
 
-//funzione di estrazione dei nodi di tipo label che prende in input i nodi e gli archi
+//funzione di estrazione dei nodi di tipo label che prende in input i nodi e gli archi per la prima simulazione
 function extract_label(archi, nodi){
   var nodi_label = []
   var archi_tmp= []
@@ -97,7 +97,7 @@ function extract_label(archi, nodi){
   }
   return [nodi_label,archi_fin]
 }
-//funzione che completa le due funzioni successive. Se un nodo estratto nelle funzioni successive è di tipo gruppo vengono aggiunti anche i nodi collegati a tale gruppo per completare la rappresentazione. Infine i dataset vengono unificati.
+//funzione che completa le due funzioni successive. Se un nodo estratto nelle funzioni successive è di tipo group vengono aggiunti anche i nodi collegati a tale gruppo per completare la rappresentazione. Infine i dataset vengono unificati.
 function extract_finale(nodi_pliv, archi_pliv){
   var nodi_iniziali = nodi
   var archi_iniziali = archi
@@ -139,12 +139,12 @@ function extract_finale(nodi_pliv, archi_pliv){
   a_fin = archi_pliv.concat(l_archi)
   return [nodi_fin, a_fin]
 }
-//funzione che lavora sulla simulazione (quando si clicca su un nodo) e estra solo il nodo cliccato di tipo label e tutti gli altri nodi ad esso collegati il cui tipo è diverso da label
+//funzione che lavora su un nodo della prima simulazione (quando si clicca su un nodo label) e estrae solo il nodo cliccato di tipo label e tutti gli altri nodi ad esso collegati il cui tipo è diverso da label
 function extract_other(id, archi, nodi, archi_label){
   var nodi_pliv = []
   var archi_pliv_tmp= []
   var nodi_fin = []
-  //mi prendo il nodo che ho cliccato e tutti i nodi con tipo diverso da type
+  //mi prendo il nodo che ho cliccato e tutti i nodi con tipo diverso da label
   for(let i = 0; i<nodi.length; i++){
     if(nodi[i].id == id)
         nodi_fin.push({id:nodi[i].id, type:nodi[i].type, name:nodi[i].name})
@@ -154,9 +154,9 @@ function extract_other(id, archi, nodi, archi_label){
     }  
   }
 
-  //popolo una lista di archi dove uno dei campi (src trg) è proprio il nodo cliccato e dopo la semplifico dai duplicati
+  //popolo una lista di archi dove il campo source è proprio il nodo cliccato e dopo la semplifico dai duplicati
   for(let j = 0; j<archi.length; j++){
-    if(archi[j].source == id ){//|| archi[j].target == id
+    if(archi[j].source == id ){
       for(let h = 0;h<nodi.length;h++){
         if(nodi[h].id == archi[j].target){
           if(nodi[h].type != "label")
@@ -188,7 +188,7 @@ function extract_other(id, archi, nodi, archi_label){
 
   return nodi_archi_completi
 }
-//funzione che lavora sulla simulazione (quando si clicca su un arco) e estra solo il nodo cliccato di tipo label e tutti gli altri nodi ad esso collegati il cui tipo è diverso da label
+//funzione che lavora sulla prima simulazione (quando si clicca su un arco) e estrae solo i due nodi source e target di tipo label dell'arco cliccato e tutti gli altri nodi ad essi collegati il cui tipo è diverso da label
 function extract_other_link(id1, id2, archi, nodi, archi_label){
   var nodi_pliv = []
   var archi_pliv_tmp= []
@@ -204,7 +204,7 @@ function extract_other_link(id1, id2, archi, nodi, archi_label){
         nodi_pliv.push({id:nodo.id, type:nodo.type, name:nodo.name})
     }  
   }
-  //popolo una lista di archi dove uno dei campi (src trg) è proprio il nodo cliccato e dopo la semplifico dai duplicati
+  //popolo una lista di archi contenente l'arco stesso e altri archi il cui campo source è proprio uno dei due nodi dell'arco cliccato e dopo la semplifico dai duplicati
   for(let j = 0; j<archi.length; j++){
     if((archi[j].source == id1 & archi[j].target ==id2) || (archi[j].source == id2 & archi[j].target ==id1))
       archi_pliv_tmp.push({source:archi[j].source, target:archi[j].target})
@@ -234,11 +234,10 @@ function extract_other_link(id1, id2, archi, nodi, archi_label){
     }
   }
   nodi_archi_completi = extract_finale(nodi_fin, archi_pliv, nodi, archi)
-  //console.log(nodi_archi_completi)
   return nodi_archi_completi
 }
 
-//graph_label[0] ritorna solo i nodi di tipo "etichetta" graph_label[1] ritorna gli archi associati
+//graph_label[0] ritorna solo i nodi di tipo "label" graph_label[1] ritorna gli archi associati
 var graph_label = extract_label(archi, nodi)
 
 //popolo una lista per il menu a tendina nella prima simulazione
@@ -246,7 +245,7 @@ var dati = ["Select a label"];
 for(let i =0; i<graph_label[0].length;i++){
   dati.push(graph_label[0][i].name)
 }
-//disegno del menu a tendine e popolamento tramite la lista sopra ricavata
+//disegno del menu a tendina e popolamento tramite la lista sopra ricavata
 var select = d3.select('body')
   .append('select')
   .attr('class','select')
@@ -325,9 +324,9 @@ simulation.force("link")
 var numberPattern = /\d+/g;
 var id = null;
 var node_int = node.on("click", function(d){
-    //mi memorizzo "l'id" del nodo che clicco per primo e lo rendo trasparente
+    //mi memorizzo "l'id" del nodo che clicco per primo
     id = this;
-    //mi estraggo la parte numerica 
+    //mi estraggo la parte numerica dall'id
     var id_def = id.id.match(numberPattern)
     //graph_other[0] ritorna solo i nodi di tipo "male, female, person, group" graph_other[1] ritorna gli archi associati
     var graph_other = extract_other(id_def[0], archi, nodi, graph_label[1])
@@ -350,7 +349,8 @@ var node_int = node.on("click", function(d){
       .data(dati2).enter()
       .append('option')
       .text(function (d) { return d; });
-    //assegno alla nuova simulazione le stesse caratteristiche della precedente
+    
+    //definisco una nuova simulazione derivante dal click sul nodo con le stesse caratteristiche della precedente
     var simulation1 = d3.forceSimulation().velocityDecay(0.8)
         .force("link1", d3.forceLink().id(function(d) { return d.id; }).distance(50).strength(1))
         .force("charge", d3.forceManyBody().strength(-3000))
@@ -358,7 +358,7 @@ var node_int = node.on("click", function(d){
         .force("x", d3.forceX(width / 2).strength(1))
         .force("y", d3.forceY(height / 2).strength(1))
         .force("center", d3.forceCenter(width / 2, height / 2));
-    //rimuoviamo temporaneamenti gli elementi delle prima rappresentazione per far mostare l'altra
+    //nascondiamo temporaneamente gli elementi delle prima rappresentazione per mostare l'altra
     select
         .style("visibility", "hidden")
     node
@@ -463,7 +463,7 @@ var node_int = node.on("click", function(d){
 
         simulation1.force("link1")
             .links(graph_other[1]);
-        //funzione che permette la visualizzazione del nodo cercato nel menu a tendina 
+        //funzione che evidenzia il nodo cercato, nel menu a tendina, trasformandone gli attributi
         var test = null;
         function searchNode2(){
           test = d3.select("#select2").property("value")
@@ -478,7 +478,7 @@ var node_int = node.on("click", function(d){
             }
           }
         }
-        //funzioni di interazione che si attivano quando il mouse passa sopra un oggetto modificando il colore e la dimensione degli oggetti
+        //funzioni di interazione che si attivano quando il mouse passa sopra un nodo modificandone il colore e il raggio
         function handleMouseOver(d) {
             if(this.id == id.id){
               d3.select(this)
@@ -493,7 +493,7 @@ var node_int = node.on("click", function(d){
                 .attr("stroke-width", 2);
             }
         }
-
+        //funzioni di interazione che si attivano quando si toglie il mouse da sopra un nodo modificandone il colore e il raggio
         function handleMouseOut(d) {
             if(this.id == id.id){
               d3.select(this)
@@ -555,7 +555,7 @@ var node_int = node.on("click", function(d){
           d.fx = null;
           d.fy = null;
         }
-        //quando clicco per tornara alla rappresentazione iniziale rimuovo tutti gli oggetti della rappresentazione corrente e mostro nuovamente quelli che avevo precedentemente nascosto. Inoltre mi occupo anche di mostrare nella rappresentazione originale il nodo da cui provengo
+        //quando clicco per tornare alla rappresentazione iniziale rimuovo tutti gli oggetti della rappresentazione corrente e mostro nuovamente quelli che avevo precedentemente nascosto. Inoltre viene anche mostrato nella rappresentazione iniziale il nodo da cui si proviene
         var node_back = node1.on("click", function(d){
           var id_nuovo = this
           if(id.id == id_nuovo.id){
@@ -587,7 +587,7 @@ var node_int = node.on("click", function(d){
       })
 // realizzazione dell'interazione con un arco  
 var link_int = link.on("click", function(d){
-    //mi memorizzo "l'id" del nodo che clicco per primo e lo rendo trasparente
+    //mi memorizzo "l'id" del arco
     id = this.id;
     ids = id.split(" ")
     id1 = ids[0]
@@ -596,6 +596,7 @@ var link_int = link.on("click", function(d){
         .style("visibility", "hidden")
     //graph_other[0] ritorna solo i nodi di tipo "male, female, person, group" graph_other[1] ritorna gli archi associati
     var graph_other_link = extract_other_link(id1, id2, archi, nodi, graph_label[1])
+    //definisco una nuova simulazione derivante dal click sull'arco con le stesse caratteristiche della precedente
     var simulation2 = d3.forceSimulation().velocityDecay(0.8)
         .force("link1", d3.forceLink().id(function(d) { return d.id; }).distance(50).strength(1))
         .force("charge", d3.forceManyBody().strength(-3000))
@@ -603,12 +604,12 @@ var link_int = link.on("click", function(d){
         .force("x", d3.forceX(width / 2).strength(1))
         .force("y", d3.forceY(height / 2).strength(1))
         .force("center", d3.forceCenter(width / 2, height / 2));
-    //rimuoviamo la rappresentazione corrente per far vedere l'altra rappresentazione
+    //nascondiamo la rappresentazione corrente per far vedere l'altra rappresentazione
     node
       .style("visibility",  "hidden")
     link
       .style("visibility",  "hidden")       
-    //disegno gli archi assegnando anche un colore 
+    //disegno degli archi assegnando anche un colore in base al tipo di collegamento 
     var link2 = svg.append("g")
         .attr("class", "links_company")
         .selectAll("line")
@@ -670,7 +671,7 @@ var link_int = link.on("click", function(d){
               targ = nodi[i].type
         }
         return "Source: "+sorg+"\n"+"Target: "+targ})
-        //disegno dei nodi 
+        //disegno dei nodi assegnandone il colore in base al tipo che essi rappresentano
         var node2 = svg.append("g")
            .attr("class", "nodes_company")
            .selectAll("circle")
@@ -697,7 +698,6 @@ var link_int = link.on("click", function(d){
            .attr("id", function(d){return d.id;})
            .attr("stroke", "#fff")
            .attr("stroke-width", function(d){
-              //var id_c = id.id.match(numberPattern)
               if(d.id == id.id)
                 return 3;
               else
@@ -719,6 +719,7 @@ var link_int = link.on("click", function(d){
 
         simulation2.force("link1")
             .links( graph_other_link[1]);
+       
         //funzioni che gestiscono l'interazione con gli archi al passaggio del mouse
         function handleMouseOver_link2(d) {
             if(this.id == id){
@@ -792,7 +793,7 @@ var link_int = link.on("click", function(d){
           d.fx = null;
           d.fy = null;
         }
-        //quando clicco per tornara alla rappresentazione iniziale rimuovo tutti gli oggetti della rappresentazione corrente e mostro nuovamente quelli che avevo precedentemente nascosto. Inoltre mi occupo anche di mostrare nella rappresentazione originale l'arco da cui provengo
+        //quando clicco per tornara alla rappresentazione iniziale rimuovo tutti gli oggetti della rappresentazione corrente e mostro nuovamente quelli che avevo precedentemente nascosto. Inoltre viene anche di mostrata nella rappresentazione originale l'arco da cui si proviene
         var node_back = link2.on("click", function(d){
           var id_nuovo = this
           if(id == id_nuovo.id){
@@ -818,7 +819,7 @@ var link_int = link.on("click", function(d){
           }
         })
       })
-//funzioni che permettono la visualizzazione e l'interazione con le forze attrattive e repulsive della simulazione
+//funzione che assegna la posizione nello spazio di nodi e archi 
 function ticked() {
     link
         .attr("x1", function(d) { return (d.source.x); })
@@ -830,7 +831,7 @@ function ticked() {
         .attr("cx", function(d) { return (d.x); })
         .attr("cy", function(d) { return (d.y); });
 }
-//funzione che permette la visualizzazione del nodo cercato nel menu a tendina
+//funzione che evidenzia il nodo cercato, nel menu a tendina, trasformandone gli attributi
 var testo = null;
 function searchNode(){
   testo = d3.select("select").property("value")

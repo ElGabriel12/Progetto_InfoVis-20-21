@@ -15,7 +15,7 @@
 function readFileJson(){
   return $.ajax({
   type: 'GET',
-  url: 'http://localhost:8000/file.json',
+  url: 'http://localhost:8000/dataset.json',
   async: false,
   dataType: 'json',
   data: { action : 'getList' },

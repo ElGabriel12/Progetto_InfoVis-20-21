@@ -1,0 +1,83 @@
+var width = document.body.clientWidth || document.documentElement.clientWidth;
+var height = document.body.clientHeight || document.documentElement.clientHeight;
+
+console.log(width)
+console.log(height)
+
+var svg = d3.select("body")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .style("background", "#FFF8DC")
+
+
+function estrazioneLabel(dataset){
+    var dataset_label = [] 
+    for(let i = 0; i<dataset.length; i++) {
+        if(dataset[i].type == "label")
+            dataset_label.push(dataset[i])
+        
+    }
+    return dataset_label
+}
+
+d3.csv("K-pop_node.csv").then(function(data){
+    var dataset = []
+    //var xRange = d3.scaleLinear().domain([getMinX(dataset),getMaxX(dataset)]).range([10,width-100])
+    //var yRange = d3.scaleLinear().domain([getMinY(dataset),getMaxY(dataset)]).range([10,height-100])
+    var label = estrazioneLabel(data)
+    //var dataset = []
+    for(let i = 0; i<label.length; i++) {
+        dataset.push({x:i*15+Math.random()*100, y:i*15+Math.random()*100})
+        
+       
+    } // end for 
+    
+   
+
+    var s = svg.selectAll("circle")
+        .data(dataset)
+        .enter()
+        .append("circle")
+        .attr("cx", function (d) {
+            return d.x
+        })
+        .attr("cy", function (d) {
+            return d.y
+        })
+        .attr("r", 9)
+        .attr("fill", "red")
+})
+
+function getMinX(dataset) {
+    var min = 0;
+    for(let i = 0; i<dataset.length; i++) {
+        if(dataset[i].x < min)
+            min = dataset[i]
+    }
+    return min
+}
+function getMaxX(dataset) {
+    var max = 0;
+    for(let i = 0; i<dataset.length; i++) {
+        if(dataset[i].x > max)
+            max = dataset[i]
+    }
+    return max
+}
+function getMinY(dataset) {
+    var min = 0;
+    for(let i = 0; i<dataset.length; i++) {
+        if(dataset[i].y < min)
+            min = dataset[i]
+    }
+    return min
+}
+function getMaxY(dataset) {
+    var max = 0;
+    for(let i = 0; i<dataset.length; i++) {
+        if(dataset[i].y > max)
+            max = dataset[i]
+    }
+    return max
+}

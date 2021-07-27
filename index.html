@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<body>
+<script src="https://cdn.jsdelivr.net/npm/d3-color@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-interpolate@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3-scale-chromatic@3"></script>
+<script src= "https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
+<div id="GFG"></div>
+<script>
+
+function readFileJson(){
+  return $.ajax({
+  type: 'GET',
+  url: 'http://localhost:8000/file.json',
+  async: false,
+  dataType: 'json',
+  data: { action : 'getList' },
+  done: function(results) {
+  // Uhm, maybe I don't even need this?
+  JSON.parse(results);
+  return results;
+  },
+  fail: function( jqXHR, textStatus, errorThrown ) {
+  console.log( 'Could not get posts, server response: ' + textStatus + ': ' + errorThrown );
+  }
+  }).responseJSON;
+  }
+
+var nodi = readFileJson().nodes;
+var archi = readFileJson().links;
+
+var width = document.documentElement.clientWidth;
+var height = document.documentElement.clientHeight;
+
+var svg = d3.select("#GFG")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height)
+            .style('background', '#FFFFF')//#d9edf7
+            .call(d3.zoom().on("zoom", function () {
+                   svg.attr("transform", d3.event.transform)
+            }))
+            .append("g");          
+
+var color = d3.scaleOrdinal(d3.schemeCategory10);
+
+var simulation = d3.forceSimulation().velocityDecay(0.8)
+    .force("link", d3.forceLink().id(function(d) { return d.id; }).distance(50).strength(1))
+    .force("charge", d3.forceManyBody().strength(-1000))
+    .force("x", d3.forceX(width / 2).strength(1))
+    .force("y", d3.forceY(height / 2).strength(1))
+    .force("center", d3.forceCenter(width / 2, height / 2));
+
+function extract_label(archi, nodi){
+  var nodi_label = []
+  var archi_tmp= []
+  for(let i = 0; i<nodi.length; i++){
+    if(nodi[i].type =="label"){
+        nodo = nodi[i]
+        var controllo = false
+        for(let j = 0; j<archi.length; j++){
+          if(archi[j].source == nodo.id || archi[j].target == nodo.id){
+            archi_tmp.push({source:archi[j].source, target:archi[j].target})
+            controllo = true
+          }
+        }
+        if(controllo == true)
+          nodi_label.push({id:nodo.id, type:nodo.type, name:nodo.name})
+    }  
+  }
+  var archi_label = archi_tmp.reduce((unique, o) => {
+    if(!unique.some(obj => obj.source === o.source && obj.target === o.target)) {
+      unique.push(o);
+    }
+    return unique;
+  },[]);
+  var archi_fin=[]
+  for(let k = 0;k<archi_label.length;k++){
+    var t1=archi_label[k].source
+    var t2=archi_label[k].target
+    var trov1 = false
+    var trov2 = false
+    for(let m = 0;m<nodi_label.length;m++){
+      if(nodi_label[m].id == t1)
+        trov1 = true
+      if(nodi_label[m].id == t2)
+        trov2 = true
+    }
+    if(trov1 & trov2)
+      archi_fin.push({source:t1, target:t2})
+  }
+  return [nodi_label,archi_fin]
+}
+
+function extract_finale(nodi_pliv, archi_pliv){
+  var nodi_iniziali = nodi
+  var archi_iniziali = archi
+  var lfin_nodi = [];
+  var l_archi = [];
+  for(let i = 0; i<nodi_pliv.length; i++){
+    if(nodi_pliv[i].type == "group"){
+      var id_tmp = nodi_pliv[i].id
+      for(let j=0; j<archi_iniziali.length; j++){
+        if(id_tmp==archi_iniziali[j].source){//
+          l_archi.push(archi[j])
+        }
+        if(id_tmp == archi_iniziali[j].source.id ){
+          l_archi.push({source:archi[j].source.id, target:archi[j].target.id})
+        }
+      }
+    }
+  }
+
+  for(let j=0;j<l_archi.length;j++){
+    id_da_trovare = l_archi[j].target
+    id_da_trovare_bis = l_archi[j].target.id
+    for(let k=0;k<nodi_iniziali.length;k++){
+      if(nodi_iniziali[k].id == id_da_trovare ||nodi_iniziali[k].id == id_da_trovare_bis){//
+        lfin_nodi.push(nodi[k])
+      }
+    }
+  }
+
+  n_fin = nodi_pliv.concat(lfin_nodi)
+  var nodi_fin = []
+  var nodi_fin = n_fin.reduce((unique, o) => {
+    if(!unique.some(obj => obj.id === o.id && obj.type === o.type && obj.name === o.name)) {
+      unique.push(o);
+    }
+    return unique;
+  },[]);
+  
+  a_fin = archi_pliv.concat(l_archi)
+  return [nodi_fin, a_fin]
+}
+
+function extract_other(id, archi, nodi, archi_label){
+  var nodi_pliv = []
+  var archi_pliv_tmp= []
+  var nodi_fin = []
+  //mi prendo il nodo che ho cliccato e tutti i nodi con tipo diverso da type
+  for(let i = 0; i<nodi.length; i++){
+    if(nodi[i].id == id)
+        nodi_fin.push({id:nodi[i].id, type:nodi[i].type, name:nodi[i].name})
+    if(nodi[i].type =="group" || nodi[i].type =="person" || nodi[i].type =="male" || nodi[i].type =="female" ){
+        nodo = nodi[i]
+        nodi_pliv.push({id:nodo.id, type:nodo.type, name:nodo.name})
+    }  
+  }
+
+  //popolo una lista di archi dove uno dei campi (src trg) è proprio il nodo cliccato e dopo la semplifico dai duplicati
+  for(let j = 0; j<archi.length; j++){
+    if(archi[j].source == id ){//|| archi[j].target == id
+      for(let h = 0;h<nodi.length;h++){
+        if(nodi[h].id == archi[j].target){
+          if(nodi[h].type != "label")
+            archi_pliv_tmp.push({source:archi[j].source, target:archi[j].target})
+        }
+      }
+    }
+  }
+
+  var archi_pliv = archi_pliv_tmp.reduce((unique, o) => {
+    if(!unique.some(obj => obj.source === o.source && obj.target === o.target)) {
+      unique.push(o);
+    }
+    return unique;
+  },[]);
+
+  //mi popolo una lista di nodi finali in base alla lista di archi finale
+  for(let k = 0;k<archi_pliv.length;k++){
+    var t1=archi_pliv[k].source
+    var t2=archi_pliv[k].target
+    for(let m = 0;m<nodi_pliv.length;m++){
+      if(nodi_pliv[m].id == t2)
+          nodi_fin.push({id:nodi_pliv[m].id, type:nodi_pliv[m].type, name:nodi_pliv[m].name})
+      if(nodi_pliv[m].id == t1)
+          nodi_fin.push({id:nodi_pliv[m].id, type:nodi_pliv[m].type, name:nodi_pliv[m].name})
+    }
+  }
+  nodi_archi_completi = extract_finale(nodi_fin, archi_pliv)
+
+  return nodi_archi_completi
+}
+
+function extract_other_link(id1, id2, archi, nodi, archi_label){
+  var nodi_pliv = []
+  var archi_pliv_tmp= []
+  var nodi_fin = []
+  //mi prendo il nodo che ho cliccato e tutti i nodi con tipo diverso da type
+  for(let i = 0; i<nodi.length; i++){
+    if(nodi[i].id == id1)
+        nodi_fin.push({id:nodi[i].id, type:nodi[i].type, name:nodi[i].name})
+    if(nodi[i].id == id2)
+        nodi_fin.push({id:nodi[i].id, type:nodi[i].type, name:nodi[i].name})
+    if(nodi[i].type =="group" || nodi[i].type =="person" || nodi[i].type =="male" || nodi[i].type =="female" ){
+        nodo = nodi[i]
+        nodi_pliv.push({id:nodo.id, type:nodo.type, name:nodo.name})
+    }  
+  }
+  //popolo una lista di archi dove uno dei campi (src trg) è proprio il nodo cliccato e dopo la semplifico dai duplicati
+  for(let j = 0; j<archi.length; j++){
+    if((archi[j].source == id1 & archi[j].target ==id2) || (archi[j].source == id2 & archi[j].target ==id1))
+      archi_pliv_tmp.push({source:archi[j].source, target:archi[j].target})
+    if(archi[j].source == id1 ||archi[j].source == id2 ){
+      for(let h = 0;h<nodi.length;h++){
+        if(nodi[h].id == archi[j].target){
+          if(nodi[h].type != "label")
+          archi_pliv_tmp.push({source:archi[j].source, target:archi[j].target})
+        }      
+      }
+    }
+  }
+  var archi_pliv = archi_pliv_tmp.reduce((unique, o) => {
+    if(!unique.some(obj => obj.source === o.source && obj.target === o.target)) {
+      unique.push(o);
+    }
+    return unique;
+  },[]);
+  for(let k = 0;k<archi_pliv.length;k++){
+    var t1=archi_pliv[k].source
+    var t2=archi_pliv[k].target
+    for(let m = 0;m<nodi_pliv.length;m++){
+      if(nodi_pliv[m].id == t2)
+          nodi_fin.push({id:nodi_pliv[m].id, type:nodi_pliv[m].type, name:nodi_pliv[m].name})
+      if(nodi_pliv[m].id == t1)
+          nodi_fin.push({id:nodi_pliv[m].id, type:nodi_pliv[m].type, name:nodi_pliv[m].name})
+    }
+  }
+  nodi_archi_completi = extract_finale(nodi_fin, archi_pliv, nodi, archi)
+  //console.log(nodi_archi_completi)
+  return nodi_archi_completi
+}
+
+//graph_label[0] ritorna solo i nodi di tipo "etichetta" graph_label[1] ritorna gli archi associati
+var graph_label = extract_label(archi, nodi)
+  //console.log(graph_label[1])
+  //console.log(graph_label[0])
+
+var dati = ["Select a label"];
+for(let i =0; i<graph_label[0].length;i++){
+  dati.push(graph_label[0][i].name)
+}
+var select = d3.select('body')
+  .append('select')
+  .attr('class','select')
+  .on('change',searchNode)
+
+var options = select.selectAll('option')
+  .data(dati).enter()
+  .append('option')
+  .text(function (d) { return d; });
+  
+var link = svg.append("g")
+    .attr("class", "links")
+    .selectAll("line")
+    .data(graph_label[1])
+    .enter().append("line")
+    .attr("id",function(d) {
+      var nodi = graph_label[0]
+      var sorg = null
+      var targ = null
+      for (let i=0;i<nodi.length;i++){
+          if(nodi[i].id == d.source)
+            sorg = nodi[i].id
+          if(nodi[i].id == d.target)
+            targ = nodi[i].id
+      }
+      return sorg+' '+targ;})
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .attr("stroke-width", 3)
+    .on("mouseover", handleMouseOver_link)
+    .on("mouseout", handleMouseOut_link);
+
+link.append("title")
+    .text(function(d) {
+      var nodi = graph_label[0]
+      var sorg = null
+      var targ = null
+      for (let i=0;i<nodi.length;i++){
+          if(nodi[i].id == d.source)
+            sorg = nodi[i].type
+          if(nodi[i].id == d.target)
+            targ = nodi[i].type
+      }
+      return "Source: "+sorg+"\n"+"Target: "+targ})
+
+var node = svg.append("g")
+    .attr("class", "nodes")
+    .selectAll("circle")
+    .data(graph_label[0])
+    .enter().append("circle")
+    .attr("r", 10)
+    .attr("fill", function(d) { return d3.schemeSet1[2]; })
+    .attr("id", function(d){return "circle"+d.id;})
+    .attr("stroke", "#fff")//#fff
+    .attr("stroke-width", 2)
+    .on("mouseover", handleMouseOver)
+    .on("mouseout", handleMouseOut)
+    .call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+node.append("title")
+    .text(function(d) { return "Name: "+d.name+"\n"+"Id: "+d.id+"\n"+"Type: "+d.type; });
+   
+simulation
+    .nodes(graph_label[0])
+    .force("collide", d3.forceCollide())  
+    .on("tick", ticked);
+
+simulation.force("link")
+    .links(graph_label[1]);
+
+var numberPattern = /\d+/g;
+var id = null;
+var node_int = node.on("click", function(d){
+    //mi memorizzo "l'id" del nodo che clicco per primo e lo rendo trasparente
+    id = this;
+    //mi estraggo la parte numerica 
+    var id_def = id.id.match(numberPattern)
+    //graph_other[0] ritorna solo i nodi di tipo "male, female, person, group" graph_other[1] ritorna gli archi associati
+    var graph_other = extract_other(id_def[0], archi, nodi, graph_label[1])
+
+    select
+        .style("visibility", "hidden")
+    
+    var dati2 = ["Select a name or a group"];
+    for(let i =0; i<graph_other[0].length;i++){
+      if(graph_other[0][i].type != "label"){
+        dati2.push(graph_other[0][i].name)
+      }
+    };
+    var select2 = d3.select('body')
+      .append('select')
+      .attr("id", "select2")
+      .attr('class','select2')
+      .on('change',searchNode2);
+
+    var options2 = select2.selectAll('option')
+      .data(dati2).enter()
+      .append('option')
+      .text(function (d) { return d; });
+
+    var simulation1 = d3.forceSimulation().velocityDecay(0.8)
+        .force("link1", d3.forceLink().id(function(d) { return d.id; }).distance(50).strength(1))
+        .force("charge", d3.forceManyBody().strength(-3000))
+        .force("collide", d3.forceCollide())
+        .force("x", d3.forceX(width / 2).strength(1))
+        .force("y", d3.forceY(height / 2).strength(1))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+    //rimuoviamo per far vedere l'altra rappresentarappresentazione
+    node
+      .style("visibility",  "hidden")
+    link
+      .style("visibility",  "hidden")       
+
+    var link1 = svg.append("g")
+        .attr("class", "links_company")
+        .selectAll("line")
+        .data(graph_other[1])
+        .enter().append("line")
+        .attr("stroke", function(d){
+          var sorge = null;
+          var targhe = null;
+          for(let i =0; i<graph_other[0].length;i++){
+            if(d.source == graph_other[0][i].id)
+              sorge = graph_other[0][i].type
+            if(d.target == graph_other[0][i].id)
+              targhe = graph_other[0][i].type
+          }
+          if(sorge == "label" && targhe =="label")
+            return "#999"  
+          if(sorge == "label" && targhe =="group")
+            return "#999"
+          if(sorge == "label" && targhe =="person")
+            return "#999"
+          if(sorge == "label" && targhe =="female")
+            return "#FFC0CB"
+          if(sorge == "label" && targhe =="male")
+            return "#99CBFF"
+          if(sorge == "group" && targhe =="male")
+            return "#99CBFF"
+          if(sorge == "group" && targhe =="female")
+            return "#FFC0CB"
+          if(sorge == "group" && targhe =="person")
+            return "#999"
+          else{
+            return "#999"
+          }
+          })
+        .attr("stroke-width", 3);
+
+    link1.append("title")
+        .text(function(d) {
+        var nodi = graph_other[0]
+        var sorg = null
+        var targ = null
+        for (let i=0;i<nodi.length;i++){
+            if(nodi[i].id == d.source)
+              sorg = nodi[i].type
+            if(nodi[i].id == d.target)
+              targ = nodi[i].type
+        }
+        return "Source: "+sorg+"\n"+"Target: "+targ})
+
+        var node1 = svg.append("g")
+           .attr("class", "nodes_company")
+           .selectAll("circle")
+           .data(graph_other[0])
+           .enter().append("circle")
+           .attr("r", function(d){ 
+              if(d.type == "label")
+                return 17;
+              if(d.type == "group")
+                return 12;
+              else return 8;} )
+           .attr("fill", function(d) {
+              if(d.type == "label")
+                return d3.schemeSet1[2];
+              if(d.type == "group")
+                return d3.schemeTableau10[2];
+              if(d.type == "male")
+                return d3.schemeCategory10[0];
+              if(d.type == "female")
+                return d3.schemeCategory10[6];
+              if(d.type == "person")
+                return d3.schemeDark2[7];
+           })
+           .attr("id", function(d){return "circle"+d.id;})
+           .attr("stroke", "#fff")
+           .attr("stroke-width", function(d){
+              var id_c = id.id.match(numberPattern)
+              if(d.id == id_c)
+                return 3;
+              else
+                return 1;
+           })
+           .on("mouseover", handleMouseOver)
+           .on("mouseout", handleMouseOut)
+           .call(d3.drag()
+            .on("start", dragstarted1)
+            .on("drag", dragged1)
+            .on("end", dragended1));
+        
+        node1.append("title")
+          .text(function(d) { return "Name: "+d.name+"\n"+"Id: "+d.id+"\n"+"Type: "+d.type; });
+
+        simulation1
+            .nodes(graph_other[0])
+            .on("tick", ticked1);
+
+        simulation1.force("link1")
+            .links(graph_other[1]);
+
+        var test = null;
+        function searchNode2(){
+          test = d3.select("#select2").property("value")
+          nodi_uno = graph_other[0]
+          archi_uno = graph_other[1]
+          for(let i=0;i<nodi_uno.length;i++){
+            if(nodi_uno[i].name == test){
+              //console.log("#circle"+nodi_uno[i].id)
+              d3.select("#circle"+nodi_uno[i].id)
+                .attr("r", 35)
+                .attr("fill", "orange")
+                .attr("stroke-width", 5);
+            }
+          }
+        }
+
+        function handleMouseOver(d) {
+            if(this.id == id.id){
+              d3.select(this)
+                .attr("fill", "orange")
+                .attr("r", 22)
+                .attr("stroke", "green")
+                .attr("stroke-width", 2);
+            }
+            else{
+              d3.select(this)
+                .attr("stroke", "red")
+                .attr("stroke-width", 2);
+            }
+        }
+
+        function handleMouseOut(d) {
+            if(this.id == id.id){
+              d3.select(this)
+              .attr("fill",function(d) { return d3.schemeSet1[2]; })
+              .attr("r", 15)
+              .attr("stroke", "#fff")
+              .attr("stroke-width", 3);
+            }
+            else{
+              d3.select(this)
+                .attr("r", function(d){
+                  if(d.type == "male" || d.type == "female" || d.type == "person" )
+                    return 8
+                  if(d.type == "group")
+                    return 12
+                  else
+                    return 17
+                })
+                .attr("fill", function(d) {
+                  if(d.type == "label")
+                    return d3.schemeSet1[2];
+                  if(d.type == "group")
+                    return d3.schemeTableau10[2];
+                  if(d.type == "male")
+                    return d3.schemeCategory10[0];
+                  if(d.type == "female")
+                    return d3.schemeCategory10[6];
+                  if(d.type == "person")
+                    return d3.schemeDark2[7];
+                })
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1);
+            }
+        }
+
+        function ticked1() {
+          link1
+              .attr("x1", function(d) { return (d.source.x); })
+              .attr("y1", function(d) { return (d.source.y); })
+              .attr("x2", function(d) { return (d.target.x); })
+              .attr("y2", function(d) { return (d.target.y); });
+
+          node1
+              .attr("cx", function(d) { return (d.x); })
+              .attr("cy", function(d) { return (d.y); });
+        }
+
+        function dragstarted1(d) {
+          if (!d3.event.active) simulation1.alphaTarget(0.1).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+        function dragged1(d) {
+          d.fx = d3.event.x;
+          d.fy = d3.event.y;
+        }
+        function dragended1(d) {
+          if (!d3.event.active) simulation1.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }
+      
+        var node_back = node1.on("click", function(d){
+          var id_nuovo = this
+          if(id.id == id_nuovo.id){
+            node1.remove()
+            link1.remove()
+            select2.remove()
+            node
+              .style("visibility",  "visible")
+              .attr("r", function(d){
+                var id_a = id.id.match(numberPattern)
+                if(d.id == id_a[0])
+                  return 22
+                else
+                  return 10
+              })
+              .attr("fill", function(d){
+                var id_a = id.id.match(numberPattern)
+                if(d.id == id_a)
+                  return "orange"
+                else
+                  return d3.schemeSet1[2];
+              })
+            select
+              .style("visibility", "visible")
+            link
+              .style("visibility",  "visible")
+          }
+        })
+      })
+
+var link_int = link.on("click", function(d){
+    //mi memorizzo "l'id" del nodo che clicco per primo e lo rendo trasparente
+    id = this.id;
+    ids = id.split(" ")
+    id1 = ids[0]
+    id2 = ids[1]
+    select
+        .style("visibility", "hidden")
+    //graph_other[0] ritorna solo i nodi di tipo "male, female, person, group" graph_other[1] ritorna gli archi associati
+    var graph_other_link = extract_other_link(id1, id2, archi, nodi, graph_label[1])
+    //console.log(graph_other)
+    var simulation2 = d3.forceSimulation().velocityDecay(0.8)
+        .force("link1", d3.forceLink().id(function(d) { return d.id; }).distance(50).strength(1))
+        .force("charge", d3.forceManyBody().strength(-3000))
+        .force("collide", d3.forceCollide())
+        .force("x", d3.forceX(width / 2).strength(1))
+        .force("y", d3.forceY(height / 2).strength(1))
+        .force("center", d3.forceCenter(width / 2, height / 2));
+    //rimuoviamo per far vedere l'altra rappresentarappresentazione
+    node
+      .style("visibility",  "hidden")
+    link
+      .style("visibility",  "hidden")       
+
+    var link2 = svg.append("g")
+        .attr("class", "links_company")
+        .selectAll("line")
+        .data(graph_other_link[1])
+        .enter().append("line")
+        .attr("id",function(d) {
+      var nodi = graph_label[0]
+      var sorg = null
+      var targ = null
+      for (let i=0;i<nodi.length;i++){
+          if(nodi[i].id == d.source)
+            sorg = nodi[i].id
+          if(nodi[i].id == d.target)
+            targ = nodi[i].id
+      }
+      return sorg+' '+targ;})
+        .attr("stroke", function(d){
+          var sorge = null;
+          var targhe = null;
+          for(let i =0; i<graph_other_link[0].length;i++){
+            if(d.source == graph_other_link[0][i].id)
+              sorge = graph_other_link[0][i].type
+            if(d.target == graph_other_link[0][i].id)
+              targhe = graph_other_link[0][i].type
+          }
+          if(sorge == "label" && targhe =="label")
+            return "#999"  
+          if(sorge == "label" && targhe =="group")
+            return "#999"
+          if(sorge == "label" && targhe =="person")
+            return "#999"
+          if(sorge == "label" && targhe =="female")
+            return "#FFC0CB"
+          if(sorge == "label" && targhe =="male")
+            return "#99CBFF"
+          if(sorge == "group" && targhe =="male")
+            return "#99CBFF"
+          if(sorge == "group" && targhe =="female")
+            return "#FFC0CB"
+          if(sorge == "group" && targhe =="person")
+            return "#999"
+          else{
+            return "#999"
+          }
+          })
+        .attr("stroke-width", 3)
+        .on("mouseover", handleMouseOver_link2)
+        .on("mouseout", handleMouseOut_link2);
+
+    link2.append("title")
+        .text(function(d) {
+        var nodi = graph_other_link[0]
+        var sorg = null
+        var targ = null
+        for (let i=0;i<nodi.length;i++){
+            if(nodi[i].id == d.source)
+              sorg = nodi[i].type
+            if(nodi[i].id == d.target)
+              targ = nodi[i].type
+        }
+        return "Source: "+sorg+"\n"+"Target: "+targ})
+
+        var node2 = svg.append("g")
+           .attr("class", "nodes_company")
+           .selectAll("circle")
+           .data(graph_other_link[0])
+           .enter().append("circle")
+           .attr("r", function(d){ 
+              if(d.type == "label")
+                return 17;
+              if(d.type == "group")
+                return 12;
+              else return 8;} )
+           .attr("fill", function(d) {
+              if(d.type == "label")
+                return d3.schemeSet1[2];
+              if(d.type == "group")
+                return d3.schemeTableau10[2];
+              if(d.type == "male")
+                return d3.schemeCategory10[0];
+              if(d.type == "female")
+                return d3.schemeCategory10[6];
+              if(d.type == "person")
+                return d3.schemeDark2[7];
+           })
+           .attr("id", function(d){return d.id;})
+           .attr("stroke", "#fff")
+           .attr("stroke-width", function(d){
+              //var id_c = id.id.match(numberPattern)
+              if(d.id == id.id)
+                return 3;
+              else
+                return 1;
+           })
+           .on("mouseover", handleMouseOver)
+           .on("mouseout", handleMouseOut)
+           .call(d3.drag()
+            .on("start", dragstarted2)
+            .on("drag", dragged2)
+            .on("end", dragended2));
+        
+        node2.append("title")
+          .text(function(d) { return "Name: "+d.name+"\n"+"Id: "+d.id+"\n"+"Type: "+d.type; });
+
+        simulation2
+            .nodes(graph_other_link[0])
+            .on("tick", ticked2);
+
+        simulation2.force("link1")
+            .links( graph_other_link[1]);
+
+        function handleMouseOver_link2(d) {
+            if(this.id == id){
+              d3.select(this)
+                .attr("stroke", "green")
+                .attr("stroke-width", 5);
+            }
+        }
+
+        function handleMouseOut_link2(d) {
+            if(this.id == id){
+              d3.select(this)
+              .attr("stroke", "#999")
+              .attr("stroke-width", 3);
+            }
+        }
+
+        function handleMouseOver(d) {
+            if(this.id == id.id){
+              d3.select(this)
+                .attr("fill", "orange")
+                .attr("r", 22)
+                .attr("stroke", "green")
+                .attr("stroke-width", 2);
+            }
+            else{
+              d3.select(this)
+                .attr("stroke", "red")
+                .attr("stroke-width", 2);
+            }
+        }
+
+        function handleMouseOut(d) {
+            if(this.id == id.id){
+              d3.select(this)
+              .attr("fill",function(d) { return d3.schemeSet1[2]; })
+              .attr("r", 15)
+              .attr("stroke", "#fff")
+              .attr("stroke-width", 3);
+            }
+            else{
+              d3.select(this)
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 1);
+            }
+        }
+
+        function ticked2() {
+          link2
+              .attr("x1", function(d) { return (d.source.x); })
+              .attr("y1", function(d) { return (d.source.y); })
+              .attr("x2", function(d) { return (d.target.x); })
+              .attr("y2", function(d) { return (d.target.y); });
+
+          node2
+              .attr("cx", function(d) { return (d.x); })
+              .attr("cy", function(d) { return (d.y); });
+        }
+
+        function dragstarted2(d) {
+          if (!d3.event.active) simulation2.alphaTarget(0.1).restart();
+          d.fx = d.x;
+          d.fy = d.y;
+        }
+        function dragged2(d) {
+          d.fx = d3.event.x;
+          d.fy = d3.event.y;
+        }
+        function dragended2(d) {
+          if (!d3.event.active) simulation2.alphaTarget(0);
+          d.fx = null;
+          d.fy = null;
+        }
+      
+        var node_back = link2.on("click", function(d){
+          var id_nuovo = this
+          if(id == id_nuovo.id){
+            node2.remove()
+            link2.remove()
+            select
+              .style("visibility",  "visible")
+            node
+              .style("visibility",  "visible")
+            link
+              .style("visibility", "visible")
+              .attr("stroke",  function(d){
+                if(id == d.source.id+" "+d.target.id)
+                  return "red"
+                else
+                  return "#999"})
+              .attr("stroke-width", function(d){
+                if(id == d.source.id+" "+d.target.id)
+                  return 5
+                else
+                  return 3
+              })
+          }
+        })
+      })
+
+function ticked() {
+    link
+        .attr("x1", function(d) { return (d.source.x); })
+        .attr("y1", function(d) { return (d.source.y); })
+        .attr("x2", function(d) { return (d.target.x); })
+        .attr("y2", function(d) { return (d.target.y); });
+
+    node
+        .attr("cx", function(d) { return (d.x); })
+        .attr("cy", function(d) { return (d.y); });
+}
+
+var testo = null;
+function searchNode(){
+  testo = d3.select("select").property("value")
+  nodi_uno = graph_label[0]
+  archi_uno = graph_label[1]
+  for(let i=0;i<nodi_uno.length;i++){
+    if(nodi_uno[i].name == testo){
+      d3.select("#circle"+nodi_uno[i].id)
+        .attr("r", 35)
+        .attr("stroke", "orange")
+        .attr("stroke-width", 5);
+    }
+  }
+}
+
+function handleMouseOver(d) {
+    d3.select(this)
+      .attr("fill", "orange")
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2)
+      .attr("r", 22);
+}
+
+function handleMouseOut(d) {
+    d3.select(this)
+      .attr("fill",function(d) { return d3.schemeSet1[2]; })
+      .attr("stroke", "#fff")
+      .attr("stroke-width", 2)
+      .attr("r", 10);
+}
+function handleMouseOver_link(d) {
+    d3.select(this)
+      .attr("stroke", "red")
+      .attr("stroke-width", 5);
+}
+
+function handleMouseOut_link(d) {
+    d3.select(this)
+      .attr("stroke", "#999")
+      .attr("stroke-width", 3);
+}
+function dragstarted(d) {
+  if (!d3.event.active) simulation.alphaTarget(0.1).restart();
+  d.fx = d.x;
+  d.fy = d.y;
+}
+
+function dragged(d) {
+  d.fx = d3.event.x;
+  d.fy = d3.event.y;
+}
+
+function dragended(d) {
+  if (!d3.event.active) simulation.alphaTarget(0);
+  d.fx = null;
+  d.fy = null;
+}
+
+</script>
+</body>

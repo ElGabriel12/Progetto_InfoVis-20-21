@@ -50,7 +50,7 @@ Esempio di Riproducibilità
 2) Cliccando sul nodo è possibile vedere una rappresentazione dei nodi ad esso collegati. Tornando alla rappresentazione iniziale (cliccando sul nodo di tipo "label", l'unico nella rappresentazione) il nodo rimarra con "illuminato" per indicarci che veniamo da li.
 3) Selezionare nel menu a tendina in basso a sinistra il nome del nodo di tipo label "Music&New". Il nodo cambiera colore e diametro.
 4) Ripetere il passo 3 nel caso specifico del nodo "Music&New"
-5) Cliccare infine sull'arco che collega i due nodi. Comparirà una rappresentazione che mostra le relazioni che legano i due nodi di tipo "label"
+5) Cliccare infine sull'arco che collega i due nodi. Comparirà una rappresentazione che mostra le relazioni che legano i due nodi di tipo "label". Per tornare infine alla rappresentazione iniziale basta cliccare quindi sull'arco tra i due nodi di tipo "label" (si colorerà di verde). 
 --------------------------
 Note
 --------------------------

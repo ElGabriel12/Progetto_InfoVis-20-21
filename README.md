@@ -43,4 +43,15 @@ La codifica dei colori utilizza diverse scale di colore fornite da d3.js ed è l
 
 •Arco grigio e nodo rosso se il collegamento coinvolge un nodo di tipo “group”.
 
-I Dataset iniziali sono stati trasformati dal formato CSV al formato JSON per essere gestiti in modo più semplice.
+--------------------------
+Esempio di Riproducibilità
+--------------------------
+1) Selezionare nel menu a tendina in basso a sinistra il nome del nodo di tipo label "LOEN Entertainment". Il nodo cambiera colore e diametro.
+2) Cliccando sul nodo è possibile vedere una rappresentazione dei nodi ad esso collegati. Tornando alla rappresentazione iniziale (cliccando sul nodo di tipo "label", l'unico nella rappresentazione) il nodo rimarra con "illuminato" per indicarci che veniamo da li.
+3) Selezionare nel menu a tendina in basso a sinistra il nome del nodo di tipo label "Music&New". Il nodo cambiera colore e diametro.
+4) Ripetere il passo 3 nel caso specifico del nodo "Music&New"
+5) Cliccare infine sull'arco che collega i due nodi. Comparirà una rappresentazione che mostra le relazioni che legano i due nodi di tipo "label"
+--------------------------
+Note
+--------------------------
+I Dataset iniziali sono stati trasformati dal formato CSV al formato JSON e infine unificati in un unico file, per essere gestiti in modo più semplice.

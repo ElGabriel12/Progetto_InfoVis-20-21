@@ -20,7 +20,6 @@ function readFileJson(){
   dataType: 'json',
   data: { action : 'getList' },
   done: function(results) {
-  // Uhm, maybe I don't even need this?
   JSON.parse(results);
   return results;
   },
@@ -36,11 +35,12 @@ var archi = readFileJson().links;
 var width = document.documentElement.clientWidth;
 var height = document.documentElement.clientHeight;
 
+//area di disegno in cui viene implementato anche lo zoom
 var svg = d3.select("#GFG")
             .append("svg")
             .attr("width", width)
             .attr("height", height)
-            .style('background', '#FFFFF')//#d9edf7
+            .style('background', '#FFFFF')
             .call(d3.zoom().on("zoom", function () {
                    svg.attr("transform", d3.event.transform)
             }))
